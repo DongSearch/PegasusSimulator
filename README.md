@@ -185,17 +185,16 @@ On first run, missing pip packages are installed automatically. Subsequent launc
 ---
 
 **`ModuleNotFoundError: No module named 'pymavlink'`**  
-→ Importing `pegasus.simulator.params` triggers the extension's `__init__.py`, which chains through the UI layer into the PX4/ArduPilot backends that require `pymavlink`. Since this app doesn't use those backends, the fix is to stop the `__init__.py` from eagerly loading the extension.
+→ `pymavlink` is required by the PX4/ArduPilot backends, which are pulled in during import even if you don't use them (`multirotor.py` instantiates `PX4MavlinkBackend` as a default, so the import cannot be skipped).
 
-In the cloned `PegasusSimulator_ext` repo, edit:  
-`extensions/pegasus.simulator/pegasus/simulator/__init__.py`
-
-Comment out the extension import:
-```python
-# from .extension import Pegasus_SimulatorExtension
+Install `pymavlink` into Isaac Sim's Python environment:
+```bash
+<isaac_sim_root>/_build/linux-x86_64/release/python.sh -m pip install pymavlink
+# Example with this machine's Isaac Sim path:
+# /home/rokey/dev_ws/isaac_sim/isaacsim/_build/linux-x86_64/release/python.sh -m pip install pymavlink
 ```
 
-This is already applied in `PegasusSimulator_ext/` in this workspace. If you re-clone the extension, apply the same patch.
+Both `px4_mavlink_backend.py` and `ardupilot_mavlink_backend.py` import `pymavlink`, so this one install fixes both.
 
 ---
 
