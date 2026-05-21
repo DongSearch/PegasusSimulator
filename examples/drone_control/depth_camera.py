@@ -10,7 +10,7 @@ driver/hardware combination (including RTX 5080 where GPU depth bugs exist).
 import numpy as np
 import carb
 
-from config import (
+from drone_config import (
     DEPTH_RES_W, DEPTH_RES_H, DEPTH_FOV_DEG,
     DEPTH_MAX_M, CAM_MOUNT_FWD,
 )

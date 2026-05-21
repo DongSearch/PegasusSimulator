@@ -25,7 +25,7 @@ from pegasus.simulator.logic.interface.pegasus_interface import PegasusInterface
 # Make local modules importable regardless of working directory
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from config import (
+from drone_config import (
     SPAWN_X, SPAWN_Y, SPAWN_Z,
     CAM_PRIM_PATH, CAM_FOCAL_LENGTH, CAM_MOUNT_FWD,
     DEPTH_UPDATE_N,

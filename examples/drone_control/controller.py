@@ -19,7 +19,7 @@ from scipy.spatial.transform import Rotation
 import carb
 from pegasus.simulator.logic.backends import Backend
 
-from config import (
+from drone_config import (
     TAKEOFF_ALT, MOVE_SPEED, YAW_RATE_DEG,
     KP, KD, KI, KR, KW, DRONE_MASS,
 )

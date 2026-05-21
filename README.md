@@ -24,7 +24,7 @@ examples/drone_control/
 ├── controller.py     HybridController — keyboard + joystick flight control (Backend)
 ├── depth_camera.py   SoftwareDepthCamera (PhysX) + FrustumDrawer (debug overlay)
 ├── hud.py            DroneHUD — unified omni.ui window (depth, minimap, status, goal)
-├── config.py         All tunable constants in one place
+├── drone_config.py   All tunable constants in one place
 └── requirements.txt  pip packages (auto-installed by run.py)
 ```
 
@@ -141,7 +141,7 @@ On first run, missing pip packages are installed automatically. Subsequent launc
 
 ---
 
-## Configuration (`config.py`)
+## Configuration (`drone_config.py`)
 
 | Parameter | Default | Description |
 |---|---|---|
@@ -198,6 +198,16 @@ Both `px4_mavlink_backend.py` and `ardupilot_mavlink_backend.py` import `pymavli
 
 ---
 
+**`NameError: name 'LOADER_DIR' is not defined` (when importing config)**  
+→ Isaac Sim's cv2 prebundle registers a file named `config.py` inside its own package directory and caches it in `sys.modules` as `config` before your local `config.py` can be found. The local settings file was renamed to `drone_config.py` to avoid the collision — all imports now use `from drone_config import ...`. If you copied the project from an older version that still has `config.py`, rename it:
+```bash
+mv examples/drone_control/config.py examples/drone_control/drone_config.py
+# then replace 'from config import' with 'from drone_config import' in
+# app.py, controller.py, depth_camera.py, hud.py
+```
+
+---
+
 **`ModuleNotFoundError: No module named 'isaacsim'`**  
 → You are using system Python. Use Isaac Sim's bundled `python.sh` / `python.bat` instead.
 
@@ -209,7 +219,7 @@ Both `px4_mavlink_backend.py` and `ardupilot_mavlink_backend.py` import `pymavli
 `<isaac_sim_python> -m pip install inputs`
 
 **Drone spins or drifts after takeoff**  
-→ Tune `KP`, `KD`, `KI` in `config.py`. Lower `KP` first if oscillation is observed.
+→ Tune `KP`, `KD`, `KI` in `drone_config.py`. Lower `KP` first if oscillation is observed.
 
 **Depth image shows all white (max range)**  
 → PhysX scene query interface failed to initialize. Check the Isaac Sim log for `[DepthCam]` messages.

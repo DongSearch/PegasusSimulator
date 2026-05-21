@@ -16,7 +16,7 @@ import omni.ui as ui
 import cv2
 import carb
 
-from config import (
+from drone_config import (
     HUD_DEPTH_W, HUD_DEPTH_H,
     HUD_MAP_W,   HUD_MAP_H,
     MAP_X0, MAP_X1, MAP_Y0, MAP_Y1,
