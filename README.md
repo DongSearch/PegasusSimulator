@@ -161,68 +161,150 @@ On first run, missing pip packages are installed automatically. Subsequent launc
 
 ## Troubleshooting
 
-**`ModuleNotFoundError: No module named 'pegasus'`**  
-→ The Pegasus Simulator extension is not installed. The `pegasus.simulator.*` package is not part of Isaac Sim itself — it must be installed separately.
-
-1. Clone the full PegasusSimulator repository:
-   ```bash
-   git clone https://github.com/PegasusSimulator/PegasusSimulator.git
-   ```
-2. Install the extension into Isaac Sim's Python environment:
-   ```bash
-   cd PegasusSimulator
-   <isaac_sim_python> -m pip install --editable extensions/pegasus.simulator
-   ```
-   Replace `<isaac_sim_python>` with your Isaac Sim Python path (see step 4 in *Running on a New Computer* above).
-3. Enable the extension inside Isaac Sim:  
-   **Window → Extensions → search "Pegasus" → Enable**
-
-> **Quick workaround** — if you just want to test without installing, add the path manually at the top of `run.py` (after `sys.path.insert` on line 27):
-> ```python
-> sys.path.insert(0, "/path/to/PegasusSimulator/extensions/pegasus.simulator")
-> ```
+All errors below were encountered during development on Isaac Sim 5.1 with the
+PegasusSimulator extension cloned locally. Solutions are listed in the order they
+typically appear on a fresh setup.
 
 ---
 
-**`ModuleNotFoundError: No module named 'pymavlink'`**  
-→ `pymavlink` is required by the PX4/ArduPilot backends, which are pulled in during import even if you don't use them (`multirotor.py` instantiates `PX4MavlinkBackend` as a default, so the import cannot be skipped).
+### Import / Module errors
 
-Install `pymavlink` into Isaac Sim's Python environment:
-```bash
-<isaac_sim_root>/_build/linux-x86_64/release/python.sh -m pip install pymavlink
-# Example with this machine's Isaac Sim path:
-# /home/rokey/dev_ws/isaac_sim/isaacsim/_build/linux-x86_64/release/python.sh -m pip install pymavlink
+#### `ModuleNotFoundError: No module named 'pegasus'`
+
+**Cause:** `pegasus.simulator` is not part of Isaac Sim — it is a separate extension
+that must be present on the Python path before any `from pegasus.simulator...` import.
+
+**Fix (this repo):** `run.py` already adds the cloned extension to `sys.path`
+automatically. All you need is the extension source to be cloned next to this repo:
+
+```
+gidong_ws/
+├── PegasusSimulator/          ← this repo
+└── PegasusSimulator_ext/      ← official extension source (clone once)
 ```
 
-Both `px4_mavlink_backend.py` and `ardupilot_mavlink_backend.py` import `pymavlink`, so this one install fixes both.
+```bash
+cd /home/rokey/gidong_ws
+git clone https://github.com/PegasusSimulator/PegasusSimulator.git PegasusSimulator_ext
+```
+
+`run.py` resolves the path relative to itself, so no further configuration is needed.
+
+**Fix (other machines / standard install):**
+
+```bash
+# 1. Clone the extension
+git clone https://github.com/PegasusSimulator/PegasusSimulator.git
+
+# 2. Install into Isaac Sim's Python environment
+cd PegasusSimulator
+<isaac_sim_python> -m pip install --editable extensions/pegasus.simulator
+
+# 3. Enable inside Isaac Sim UI
+#    Window → Extensions → search "Pegasus" → Enable
+```
 
 ---
 
-**`NameError: name 'LOADER_DIR' is not defined` (when importing config)**  
-→ Isaac Sim's cv2 prebundle registers a file named `config.py` inside its own package directory and caches it in `sys.modules` as `config` before your local `config.py` can be found. The local settings file was renamed to `drone_config.py` to avoid the collision — all imports now use `from drone_config import ...`. If you copied the project from an older version that still has `config.py`, rename it:
+#### `ModuleNotFoundError: No module named 'pymavlink'`
+
+**Cause:** `multirotor.py` unconditionally imports `PX4MavlinkBackend`, which imports
+`pymavlink`. This happens even if you never use the PX4 backend — the import cannot
+be skipped. The error appears as soon as `Multirotor` or `MultirotorConfig` is imported.
+
+**Fix:** Install `pymavlink` into Isaac Sim's Python environment (one-time, per machine):
+
+```bash
+# Linux — source install
+<isaac_sim_root>/_build/linux-x86_64/release/python.sh -m pip install pymavlink
+
+# Example path on this machine:
+/home/rokey/dev_ws/isaac_sim/isaacsim/_build/linux-x86_64/release/python.sh -m pip install pymavlink
+```
+
+This covers both `px4_mavlink_backend.py` and `ardupilot_mavlink_backend.py` since
+both import `pymavlink`.
+
+**Also required — patch the extension `__init__.py`:**  
+The extension's `pegasus/simulator/__init__.py` eagerly imports the full Isaac Sim
+extension class, which pulls in the UI layer and all backends. Comment out that line
+so the Python library can be used standalone:
+
+```python
+# In PegasusSimulator_ext/extensions/pegasus.simulator/pegasus/simulator/__init__.py
+# Comment out:
+# from .extension import Pegasus_SimulatorExtension
+```
+
+This patch is already applied in `PegasusSimulator_ext/` in this workspace.  
+If you re-clone the extension, reapply it.
+
+---
+
+#### `NameError: name 'LOADER_DIR' is not defined`
+
+**Cause:** Isaac Sim's cv2 prebundle contains a file at  
+`omni.pip.compute/pip_prebundle/cv2/config.py`.  
+When cv2 loads, it caches that file in `sys.modules` under the key `config`.  
+Any subsequent `from config import ...` in your code resolves to cv2's file
+instead of the local one — regardless of `sys.path` order.
+
+**Fix (already applied):** The local settings file was renamed from `config.py` to
+`drone_config.py`. All four files that import it (`app.py`, `controller.py`,
+`depth_camera.py`, `hud.py`) use `from drone_config import ...`.
+
+If you copied the project from an older version that still has `config.py`:
+
 ```bash
 mv examples/drone_control/config.py examples/drone_control/drone_config.py
-# then replace 'from config import' with 'from drone_config import' in
-# app.py, controller.py, depth_camera.py, hud.py
+# Then in app.py, controller.py, depth_camera.py, hud.py:
+# replace every  'from config import'  with  'from drone_config import'
 ```
 
 ---
 
-**`ModuleNotFoundError: No module named 'isaacsim'`**  
-→ You are using system Python. Use Isaac Sim's bundled `python.sh` / `python.bat` instead.
+#### `ModuleNotFoundError: No module named 'isaacsim'`
 
-**`[Ctrl] keyboard failed: ...`**  
-→ The Isaac Sim window must have focus for keyboard events to register. Click on the viewport.
+**Cause:** You are running with system Python instead of Isaac Sim's bundled Python.
+`isaacsim`, `omni`, `carb`, and `pxr` are only available inside Isaac Sim's Python.
+
+**Fix:** Use Isaac Sim's `python.sh` / `python.bat` to launch the script:
+
+```bash
+# Linux
+~/.local/share/ov/pkg/isaac-sim-4.x.x/python.sh examples/drone_control/run.py
+
+# Or with the source-install path on this machine:
+/home/rokey/dev_ws/isaac_sim/isaacsim/_build/linux-x86_64/release/python.sh examples/drone_control/run.py
+```
+
+See *Step 4 — Find Isaac Sim's Python executable* above for all install-method paths.
+
+---
+
+### Input issues
 
 **`[Ctrl] no gamepad found — keyboard only`**  
-→ Plug in the controller before launching, or install the `inputs` package manually:  
-`<isaac_sim_python> -m pip install inputs`
+Plug in the controller before launching. Or install the `inputs` package manually:
+```bash
+<isaac_sim_python> -m pip install inputs
+```
+
+**`[Ctrl] keyboard failed: ...`**  
+The Isaac Sim viewport must have focus for keyboard events to register. Click on
+the 3D viewport after launch.
+
+---
+
+### Simulation / visual issues
 
 **Drone spins or drifts after takeoff**  
-→ Tune `KP`, `KD`, `KI` in `drone_config.py`. Lower `KP` first if oscillation is observed.
+Tune `KP`, `KD`, `KI` in `drone_config.py`. Lower `KP` first if oscillation is seen.
 
 **Depth image shows all white (max range)**  
-→ PhysX scene query interface failed to initialize. Check the Isaac Sim log for `[DepthCam]` messages.
+The PhysX scene query interface failed to initialize. Check the Isaac Sim log for
+`[DepthCam]` messages.
 
 **Black Gridroom environment not found**  
-→ The Pegasus extension must be enabled and its assets downloaded. Re-run the Pegasus setup script.
+The Pegasus extension assets were not downloaded. Re-run the Pegasus setup script and
+confirm the extension is enabled in **Window → Extensions**.
