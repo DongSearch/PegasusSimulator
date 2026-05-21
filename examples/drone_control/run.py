@@ -26,6 +26,15 @@ import os
 # Add this folder to Python path so local modules (app, controller, …) are found
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Add the PegasusSimulator extension to the Python path so 'pegasus.simulator.*' is importable.
+# The extension lives in the workspace alongside this project.
+_PEGASUS_EXT = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),  # .../drone_control/
+    "..", "..", "..",                             # .../gidong_ws/
+    "PegasusSimulator_ext", "extensions", "pegasus.simulator",
+)
+sys.path.insert(0, os.path.normpath(_PEGASUS_EXT))
+
 # ── 1. Dependency check + auto-install ───────────────────────────────────── #
 
 # Map: import_name → pip install spec
